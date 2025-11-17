@@ -91,6 +91,26 @@
   }
 
   /**
+   * Verify a Kamaitachi API key. Return `true` if valid, `false` otherwise.
+   *
+   * @param {string} apiKey
+   * @returns {boolean}
+   */
+  async function verifyApiKey(apiKey) {
+    const resp = await fetch(`https://kamai.tachi.ac/api/v1/users/me`, {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+    }).then((r) => r.json());
+
+    if (!resp.success) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
    * Wait for `ms` milliseconds.
    *
    * @param {number} ms
@@ -538,21 +558,27 @@
       closeOverlay();
     });
 
-    ok.addEventListener("click", () => {
+    ok.addEventListener("click", async () => {
       const val = input.value.trim();
       if (!val) {
         // minimal validation
         input.focus();
         return;
       }
-      setPreference(API_KEY, val);
 
-      // close modal immediately so it doesn't block the log
+      // close the modal immediately so the user can see log messages
       closeOverlay();
 
-      // reload the page so the userscript re-injects and updates button text
-      log("API key saved. Reloading page to apply changes...");
-      // small delay so log text may be visible briefly
+      log("Verifying API key...");
+
+      const isValid = await verifyApiKey(val);
+      if (!isValid) {
+        log("Error: Failed to verify API key.");
+        return;
+      }
+
+      setPreference(API_KEY, val);
+      log("API key verified and saved. Reloading page to apply changes...");
       setTimeout(() => location.reload(), 150);
     });
   }
