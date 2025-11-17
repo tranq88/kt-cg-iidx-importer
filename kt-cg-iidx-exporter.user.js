@@ -23,6 +23,8 @@
   const PAGE_LIMIT = 10;
   const API_KEY = "api-key";
   const KAMAI_COLOR = "#e61c6e";
+  const CLIENT_FILE_FLOW =
+    "https://kamai.tachi.ac/client-file-flow/CIb4851b4fd80234cacb9934c1c0eee1c9d9da3030";
 
   const difficultyMap = {
     B: "BEGINNER",
@@ -419,13 +421,31 @@
     });
 
     const btnRow = document.createElement("div");
-    btnRow.style.textAlign = "right";
+    Object.assign(btnRow.style, {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: "0.5rem",
+    });
 
     const cancel = document.createElement("button");
     cancel.type = "button";
     cancel.textContent = "Cancel";
     cancel.style.marginRight = "0.5rem";
     Object.assign(cancel.style, {
+      background: "transparent",
+      color: "#ddd",
+      border: "1px solid rgba(255,255,255,0.06)",
+      padding: "0.4rem 0.6rem",
+      borderRadius: "4px",
+      cursor: "pointer",
+    });
+
+    const getKeyBtn = document.createElement("button");
+    getKeyBtn.type = "button";
+    getKeyBtn.textContent = "Get API key";
+    getKeyBtn.style.marginRight = "0.5rem";
+    Object.assign(getKeyBtn.style, {
       background: "transparent",
       color: "#ddd",
       border: "1px solid rgba(255,255,255,0.06)",
@@ -446,8 +466,17 @@
       cursor: "pointer",
     });
 
-    btnRow.appendChild(cancel);
-    btnRow.appendChild(ok);
+    // left group (gets left-aligned)
+    const leftGroup = document.createElement("div");
+    leftGroup.appendChild(getKeyBtn);
+
+    // right group (keeps Cancel/OK on the right)
+    const rightGroup = document.createElement("div");
+    rightGroup.appendChild(cancel);
+    rightGroup.appendChild(ok);
+
+    btnRow.appendChild(leftGroup);
+    btnRow.appendChild(rightGroup);
 
     modal.appendChild(title);
     modal.appendChild(input);
@@ -475,6 +504,10 @@
 
     cancel.addEventListener("click", () => {
       closeOverlay();
+    });
+
+    getKeyBtn.addEventListener("click", () => {
+      window.open(CLIENT_FILE_FLOW, "_blank", "noopener");
     });
 
     overlay.addEventListener("click", (ev) => {
