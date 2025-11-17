@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name     kt-cg-iidx-exporter
+// @name     kt-cg-iidx-importer
 // @author   tranq
-// @version  7
+// @version  1.0.0
 // @grant    none
 
 // @match    https://dev.cardinal-gate.net/iidx/profile*
@@ -37,7 +37,7 @@
    * @returns {string}
    */
   function getServiceName() {
-    let base = "kt-cg-iidx-exporter";
+    let base = "kt-cg-iidx-importer";
     const url = window.location.href;
 
     if (url.includes("dev")) {
