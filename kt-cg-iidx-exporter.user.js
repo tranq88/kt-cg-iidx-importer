@@ -52,12 +52,12 @@
   }
 
   /**
-   * Send a message to the log under the export button.
+   * Send a message to the log under the import button.
    *
    * @param {string} txt
    */
   function log(txt) {
-    const statusNode = document.getElementById("export-status");
+    const statusNode = document.getElementById("import-status");
     const FORMAT = "hh:mm:ss.u";
     const dateText = dateFns.format(new Date(), FORMAT);
     statusNode.innerHTML += `[${dateText}] ${txt}\n`;
@@ -339,35 +339,36 @@
   }
 
   /**
-   * Create an export button next to the Update button.
+   * Create an import button next to the Update button.
    */
-  function createExportButton() {
+  function createImportButton() {
     const kamaiColor = "#e61c6e";
     const panelFooterRow = document.querySelector("form .panel tfoot tr");
     const updateButton = panelFooterRow.querySelector('input[value="Update"]');
-    const exportButton = updateButton.cloneNode();
+    const importButton = updateButton.cloneNode();
 
-    exportButton.setAttribute("type", "button");
-    exportButton.setAttribute("name", "export");
+    importButton.setAttribute("type", "button");
+    importButton.setAttribute("name", "import");
+
     const pageQueue = getPageQueue();
-    exportButton.value = `Export pages ${pageQueue.at(0)}-${pageQueue.at(-1)}`;
-    exportButton.style.backgroundColor = kamaiColor;
-    exportButton.style.margin = "0 1em";
+    importButton.value = `Import pages ${pageQueue.at(0)}-${pageQueue.at(-1)}`;
+    importButton.style.backgroundColor = kamaiColor;
+    importButton.style.margin = "0 1em";
 
-    updateButton.after(exportButton);
+    updateButton.after(importButton);
 
-    const exportStatus = document.createElement("td");
-    exportStatus.id = "export-status";
-    exportStatus.setAttribute("colspan", 2);
-    exportStatus.style.whiteSpace = "pre";
-    const exportStatusRow = document.createElement("tr");
-    panelFooterRow.after(exportStatusRow);
-    exportStatusRow.append(exportStatus);
+    const importStatus = document.createElement("td");
+    importStatus.id = "import-status";
+    importStatus.setAttribute("colspan", 2);
+    importStatus.style.whiteSpace = "pre";
+    const importStatusRow = document.createElement("tr");
+    panelFooterRow.after(importStatusRow);
+    importStatusRow.append(importStatus);
 
-    exportButton.onclick = async () => {
+    importButton.onclick = async () => {
       await downloadScores();
     };
   }
 
-  createExportButton();
+  createImportButton();
 })();
