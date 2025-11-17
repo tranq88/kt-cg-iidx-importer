@@ -487,6 +487,18 @@
     // focus the input
     setTimeout(() => input.focus(), 10);
 
+    // disable page scrolling while modal is open; save previous values to restore later
+    const _prevBodyOverflow = document.body.style.overflow || "";
+    const _prevHtmlOverflow = document.documentElement.style.overflow || "";
+    const _prevBodyPaddingRight = document.body.style.paddingRight || "";
+    const _scrollbarWidth =
+      window.innerWidth - document.documentElement.clientWidth;
+    if (_scrollbarWidth > 0) {
+      document.body.style.paddingRight = `${_scrollbarWidth}px`;
+    }
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+
     // track whether a mousedown started inside the modal so releasing
     // the mouse outside (e.g. when selecting text) doesn't close the overlay.
     let mouseDownStartedInModal = false;
@@ -496,6 +508,11 @@
     document.addEventListener("mousedown", onDocumentMouseDown, true);
 
     function closeOverlay() {
+      // restore scrolling styles
+      document.body.style.overflow = _prevBodyOverflow;
+      document.documentElement.style.overflow = _prevHtmlOverflow;
+      document.body.style.paddingRight = _prevBodyPaddingRight;
+
       if (overlay && overlay.parentNode)
         overlay.parentNode.removeChild(overlay);
       // cleanup document-level listener
