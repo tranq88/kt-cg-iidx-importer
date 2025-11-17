@@ -19,9 +19,10 @@
 (() => {
   "use strict";
 
-  // do not abuse these!
   const SLEEP_TIME_BETWEEN_PAGES = 250;
   const PAGE_LIMIT = 10;
+  const API_KEY = "api-key";
+  const KAMAI_COLOR = "#e61c6e";
 
   const difficultyMap = {
     B: "BEGINNER",
@@ -52,15 +53,39 @@
   }
 
   /**
-   * Send a message to the log under the import button.
+   * Send a message to the log box.
    *
    * @param {string} txt
    */
   function log(txt) {
-    const statusNode = document.getElementById("import-status");
+    const statusNode = document.getElementById("log-box");
     const FORMAT = "hh:mm:ss.u";
     const dateText = dateFns.format(new Date(), FORMAT);
     statusNode.innerHTML += `[${dateText}] ${txt}\n`;
+  }
+
+  /**
+   * Create a log box under this script's buttons.
+   */
+  function createLogBox() {
+    const logBox = document.createElement("td");
+    logBox.id = "log-box";
+    logBox.setAttribute("colspan", 2);
+    logBox.style.whiteSpace = "pre";
+
+    const importStatusRow = document.createElement("tr");
+    importStatusRow.append(logBox);
+
+    const panelFooterRow = document.querySelector("form .panel tfoot tr");
+    panelFooterRow.after(importStatusRow);
+  }
+
+  function getPreference(key) {
+    return localStorage.getItem(`__ktimporter__${key}`);
+  }
+
+  function setPreference(key, value) {
+    return localStorage.setItem(`__ktimporter__${key}`, value.toString());
   }
 
   /**
@@ -339,36 +364,209 @@
   }
 
   /**
+   * Show a full-page dark overlay with a centered modal to enter API key.
+   * Saves the key via `setPreference(API_KEY, value)` and enables the import button.
+   *
+   * **NOTE: This function is vibe-coded :)**
+   *
+   * @param {string} currentValue
+   */
+  function showApiKeyModal(currentValue) {
+    // overlay
+    const overlay = document.createElement("div");
+    overlay.id = "ktimporter-overlay";
+    Object.assign(overlay.style, {
+      position: "fixed",
+      inset: "0",
+      backgroundColor: "rgba(0,0,0,0.5)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 9999,
+    });
+
+    // modal
+    const modal = document.createElement("div");
+    Object.assign(modal.style, {
+      background: "#1e1e1e",
+      color: "#eee",
+      padding: "1rem",
+      borderRadius: "6px",
+      minWidth: "320px",
+      maxWidth: "90%",
+      boxShadow: "0 6px 24px rgba(0,0,0,0.6)",
+    });
+
+    const title = document.createElement("div");
+    title.textContent = "Enter API key";
+    title.style.fontWeight = "600";
+    title.style.marginBottom = "0.5rem";
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.value = currentValue || "";
+    input.placeholder = "API key";
+    Object.assign(input.style, {
+      width: "100%",
+      padding: "0.5rem",
+      marginBottom: "0.75rem",
+      boxSizing: "border-box",
+      background: "#222",
+      color: "#fff",
+      border: "1px solid #333",
+      borderRadius: "4px",
+      outline: "none",
+    });
+
+    const btnRow = document.createElement("div");
+    btnRow.style.textAlign = "right";
+
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.textContent = "Cancel";
+    cancel.style.marginRight = "0.5rem";
+    Object.assign(cancel.style, {
+      background: "transparent",
+      color: "#ddd",
+      border: "1px solid rgba(255,255,255,0.06)",
+      padding: "0.4rem 0.6rem",
+      borderRadius: "4px",
+      cursor: "pointer",
+    });
+
+    const ok = document.createElement("button");
+    ok.type = "button";
+    ok.textContent = "OK";
+    Object.assign(ok.style, {
+      background: KAMAI_COLOR,
+      color: "#fff",
+      border: "none",
+      padding: "0.45rem 0.8rem",
+      borderRadius: "4px",
+      cursor: "pointer",
+    });
+
+    btnRow.appendChild(cancel);
+    btnRow.appendChild(ok);
+
+    modal.appendChild(title);
+    modal.appendChild(input);
+    modal.appendChild(btnRow);
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    // focus the input
+    setTimeout(() => input.focus(), 10);
+
+    // track whether a mousedown started inside the modal so releasing
+    // the mouse outside (e.g. when selecting text) doesn't close the overlay.
+    let mouseDownStartedInModal = false;
+    function onDocumentMouseDown(e) {
+      mouseDownStartedInModal = modal.contains(e.target);
+    }
+    document.addEventListener("mousedown", onDocumentMouseDown, true);
+
+    function closeOverlay() {
+      if (overlay && overlay.parentNode)
+        overlay.parentNode.removeChild(overlay);
+      // cleanup document-level listener
+      document.removeEventListener("mousedown", onDocumentMouseDown, true);
+    }
+
+    cancel.addEventListener("click", () => {
+      closeOverlay();
+    });
+
+    overlay.addEventListener("click", (ev) => {
+      if (ev.target !== overlay) return;
+      // If the user started the mousedown inside the modal (for selection)
+      // and released outside, ignore this click so the modal stays open.
+      if (mouseDownStartedInModal) {
+        mouseDownStartedInModal = false;
+        return;
+      }
+      closeOverlay();
+    });
+
+    ok.addEventListener("click", () => {
+      const val = input.value.trim();
+      if (!val) {
+        // minimal validation
+        input.focus();
+        return;
+      }
+      setPreference(API_KEY, val);
+
+      // close modal immediately so it doesn't block the log
+      closeOverlay();
+
+      // reload the page so the userscript re-injects and updates button text
+      log("API key saved. Reloading page to apply changes...");
+      // small delay so log text may be visible briefly
+      setTimeout(() => location.reload(), 150);
+    });
+  }
+
+  function createApiKeyButton() {
+    const panelFooterRow = document.querySelector("form .panel tfoot tr");
+    const updateButton = panelFooterRow.querySelector('input[value="Update"]');
+    const apiKeyButton = updateButton.cloneNode();
+
+    apiKeyButton.setAttribute("type", "button");
+    apiKeyButton.id = "api-key-button";
+    apiKeyButton.style.backgroundColor = KAMAI_COLOR;
+    apiKeyButton.style.margin = "0 0.75em";
+
+    // the button's text depends on whether an API key is set or not
+    const hasApiKey = !!getPreference(API_KEY);
+    apiKeyButton.value = hasApiKey
+      ? "Reconfigure API key (if broken)"
+      : "Set API key";
+
+    updateButton.after(apiKeyButton);
+
+    apiKeyButton.onclick = () => {
+      const current = getPreference(API_KEY) || "";
+      showApiKeyModal(current);
+    };
+  }
+
+  /**
    * Create an import button next to the Update button.
    */
   function createImportButton() {
-    const kamaiColor = "#e61c6e";
-    const panelFooterRow = document.querySelector("form .panel tfoot tr");
-    const updateButton = panelFooterRow.querySelector('input[value="Update"]');
-    const importButton = updateButton.cloneNode();
+    const apiKeyButton = document.getElementById("api-key-button");
+
+    if (!apiKeyButton) {
+      console.error(
+        "Error: createImportButton() was called before the API key button was created"
+      );
+      return;
+    }
+
+    const importButton = apiKeyButton.cloneNode();
+    importButton.style.margin = "0";
 
     importButton.setAttribute("type", "button");
-    importButton.setAttribute("name", "import");
+    importButton.id = "import-button";
 
     const pageQueue = getPageQueue();
     importButton.value = `Import pages ${pageQueue.at(0)}-${pageQueue.at(-1)}`;
-    importButton.style.backgroundColor = kamaiColor;
-    importButton.style.margin = "0 1em";
 
-    updateButton.after(importButton);
-
-    const importStatus = document.createElement("td");
-    importStatus.id = "import-status";
-    importStatus.setAttribute("colspan", 2);
-    importStatus.style.whiteSpace = "pre";
-    const importStatusRow = document.createElement("tr");
-    panelFooterRow.after(importStatusRow);
-    importStatusRow.append(importStatus);
+    apiKeyButton.after(importButton);
 
     importButton.onclick = async () => {
       await downloadScores();
     };
+
+    // disable the button if API key is not set
+    const hasApiKey = !!getPreference(API_KEY);
+    if (!hasApiKey) {
+      importButton.disabled = true;
+    }
   }
 
+  createLogBox();
+  createApiKeyButton();
   createImportButton();
 })();
