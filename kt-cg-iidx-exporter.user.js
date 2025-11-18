@@ -25,6 +25,7 @@
   const KAMAI_COLOR = "#e61c6e";
   const CLIENT_FILE_FLOW =
     "https://kamai.tachi.ac/client-file-flow/CIb4851b4fd80234cacb9934c1c0eee1c9d9da3030";
+  const LOG_SEPARATOR = "-".repeat(40);
 
   const difficultyMap = {
     B: "BEGINNER",
@@ -314,25 +315,24 @@
       DP: [],
     };
 
-    for (let i = pageQueue.at(0); i <= pageQueue.at(-1); i++) {
+    const start = pageQueue.at(0);
+    const end = pageQueue.at(-1);
+
+    log(`Fetching all scores from pages ${start} to ${end}...`);
+
+    for (let i = start; i <= end; i++) {
       const url = document.URL.split("?")[0] + `?page=${i}`;
-      log(`Fetching scores from ${url}`);
       const resp = await fetch(url);
       const doc = parser.parseFromString(await resp.text(), "text/html");
+
       const pageScores = fetchScores(doc);
-      log(`    Fetched ${pageScores.SP.length} SP scores.`);
-      log(`    Fetched ${pageScores.DP.length} DP scores.`);
       scores.SP = scores.SP.concat(pageScores.SP);
       scores.DP = scores.DP.concat(pageScores.DP);
-      log(
-        `Waiting ${SLEEP_TIME_BETWEEN_PAGES}ms to avoid overloading the website...`
-      );
+      log(`Fetched all scores from ${url}`);
+
       await sleep(SLEEP_TIME_BETWEEN_PAGES);
     }
 
-    log(
-      `Fetched all scores from pages ${pageQueue.at(0)} to ${pageQueue.at(-1)}.`
-    );
     return scores;
   }
 
@@ -363,19 +363,126 @@
   }
 
   /**
+   * Poll the status of a Kamaitachi import.
+   *
+   * @param {string} url
+   * @param {string} gameVer
+   * @param {string} playtype
+   */
+  async function pollStatus(url, gameVer, playtype) {
+    const req = await fetch(url, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${getPreference(API_KEY)}`,
+      },
+    });
+
+    const body = await req.json();
+
+    if (!body.success) {
+      updateStatus("Error: " + body.description);
+      return;
+    }
+
+    if (body.body.importStatus === "ongoing") {
+      setTimeout(pollStatus, 1000, url, gameVer, playtype);
+      return;
+    }
+
+    if (body.body.importStatus === "completed") {
+      console.log(body.body);
+      let message =
+        `[Import for IIDX ${gameVer} ${playtype}] ` +
+        body.description +
+        ` ${body.body.import.scoreIDs.length} new scores`;
+
+      let errorNote = "";
+
+      if (body.body.import.errors.length > 0) {
+        errorNote = " (see console log for details)";
+        for (const error of body.body.import.errors) {
+          console.log(`${error.type}: ${error.message}`);
+        }
+      }
+
+      message += `, ${body.body.import.errors.length} errors${errorNote}.`;
+      log(message);
+
+      return;
+    }
+
+    // otherwise, just print the description cuz we're not sure what happened
+    log(body.description);
+  }
+
+  /**
+   * Submit scores to Kamaitachi via DIRECT-MANUAL.
+   *
+   * @param {object} body
+   * @param {string} gameVer
+   * @param {string} playtype
+   */
+  async function submitScores(body, gameVer, playtype) {
+    const url = "https://kamai.tachi.ac/ir/direct-manual/import";
+
+    const req = fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + getPreference(API_KEY),
+        "Content-Type": "application/json",
+        "X-User-Intent": "true",
+      },
+      body: JSON.stringify(body),
+    });
+
+    const json = await (await req).json();
+    // if json.success
+    const pollUrl = json.body.url;
+
+    await pollStatus(pollUrl, gameVer, playtype);
+  }
+
+  /**
+   * Count how many different imports are needed for all the fetched scores.
+   *
+   * @param { Record<string, {SP: object[]; DP: object[]}> } scoresByGameVer
+   * @returns {number}
+   */
+  function countNumImports(scoresByGameVer) {
+    let res = 0;
+
+    for (const gameVer in scoresByGameVer) {
+      const scores = scoresByGameVer[gameVer];
+
+      if (scores.SP.length > 0) {
+        res++;
+      }
+
+      if (scores.DP.length > 0) {
+        res++;
+      }
+    }
+
+    return res;
+  }
+
+  /**
    * Download all parsed scores to a JSON in BATCH-MANUAL format.
    */
   async function downloadScores() {
-    log(
-      "Starting script. Make sure to allow multiple downloads if you play on more than one game version and/or playtype (SP/DP)."
-    );
+    log(LOG_SEPARATOR);
 
-    const nowText = dateFns.format(new Date(), "yyyy-MM-dd-'at'-hh-mm-ss");
     const scoresUngrouped = await fetchScoresForPages();
     const scoresByGameVer = groupScoresByGameVer(scoresUngrouped);
 
-    log(`Total SP: ${scoresUngrouped.SP.length}`);
-    log(`Total DP: ${scoresUngrouped.DP.length}`);
+    const numImports = countNumImports(scoresByGameVer);
+    log(
+      `Starting imports for each game version and playtype (${numImports} imports)...`
+    );
+
+    // TODO: this for-loop might be a janky way of doing it since we're
+    // dealing with async/await. if we happen to see significant
+    // performance issues then we'll reconsider.
 
     // go by each game version and then by each playtype
     for (const gameVer in scoresByGameVer) {
@@ -391,33 +498,18 @@
         scores: scores.SP,
       };
 
-      let blob;
-      const blobType = "application/json;charset=utf-8";
+      // we're not gonna bother sleeping in between API calls
+      // cause surely there won't be a user that has a million game versions
       if (scores.SP.length > 0) {
-        log(`Generating IIDX ${gameVer} SP file...`);
-        blob = new Blob([JSON.stringify(batchJson, null, 2)], {
-          type: blobType,
-        });
-        saveAs(blob, `export-cg-iidx${gameVer}-sp-${nowText}.json`);
+        await submitScores(batchJson, gameVer, "SP");
       }
       if (scores.DP.length > 0) {
         batchJson.meta.playtype = "DP";
         batchJson.scores = scores.DP;
 
-        log(`Generating IIDX ${gameVer} DP file...`);
-        blob = new Blob([JSON.stringify(batchJson, null, 2)], {
-          type: blobType,
-        });
-        saveAs(blob, `export-cg-iidx${gameVer}-dp-${nowText}.json`);
+        await submitScores(batchJson, gameVer, "DP");
       }
     }
-
-    log("Done!");
-    const kamaiLink =
-      `<a href="https://kamai.tachi.ac/import/batch-manual" target="_blank">` +
-      `https://kamai.tachi.ac/import/batch-manual` +
-      `</a>`;
-    log(`File(s) should be ready to be uploaded to ${kamaiLink}.`);
   }
 
   /**
