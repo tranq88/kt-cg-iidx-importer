@@ -616,6 +616,14 @@
       log("API key verified and saved. Reloading page to apply changes...");
       setTimeout(() => location.reload(), 150);
     });
+
+    // allow Enter key in the input to activate the OK button
+    input.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter") {
+        ev.preventDefault();
+        ok.click();
+      }
+    });
   }
 
   function createApiKeyButton() {
