@@ -64,19 +64,54 @@
     const FORMAT = "hh:mm:ss.u";
     const dateText = dateFns.format(new Date(), FORMAT);
     statusNode.innerHTML += `[${dateText}] ${txt}\n`;
+
+    // autoscroll to the newest message
+    try {
+      statusNode.scrollTop = statusNode.scrollHeight;
+    } catch (e) {
+      // ignore if element not available or not scrollable
+    }
   }
 
   /**
    * Create a log box under this script's buttons.
    */
   function createLogBox() {
-    const logBox = document.createElement("td");
-    logBox.id = "log-box";
-    logBox.setAttribute("colspan", 2);
-    logBox.style.whiteSpace = "pre";
+    // inject custom scrollbar styles once
+    if (!document.getElementById("ktimporter-scroll-style")) {
+      const style = document.createElement("style");
+      style.id = "ktimporter-scroll-style";
+      style.textContent = `
+        /* WebKit-based browsers */
+        #log-box::-webkit-scrollbar { width: 10px; height: 10px; }
+        #log-box::-webkit-scrollbar-track { background: transparent; }
+        #log-box::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 6px; }
+        #log-box::-webkit-scrollbar-button { display: none; height: 0; }
+
+        /* Firefox */
+        #log-box { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.12) transparent; }
+      `;
+      document.head.appendChild(style);
+    }
+    // create a table cell and put a scrollable div inside it so the page
+    // doesn't grow indefinitely when many log messages are produced
+    const td = document.createElement("td");
+    td.setAttribute("colspan", 2);
+
+    const inner = document.createElement("div");
+    inner.id = "log-box";
+    Object.assign(inner.style, {
+      whiteSpace: "pre",
+      height: "200px",
+      overflow: "auto",
+      padding: "0.25rem",
+      background: "transparent",
+    });
+
+    td.appendChild(inner);
 
     const importStatusRow = document.createElement("tr");
-    importStatusRow.append(logBox);
+    importStatusRow.append(td);
 
     const panelFooterRow = document.querySelector("form .panel tfoot tr");
     panelFooterRow.after(importStatusRow);
@@ -643,6 +678,8 @@
   }
 
   createLogBox();
+  log("Userscript ready! Logs will appear here.");
+
   createApiKeyButton();
   createImportButton();
 })();
