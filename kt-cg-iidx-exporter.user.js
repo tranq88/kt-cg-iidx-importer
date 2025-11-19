@@ -13,14 +13,16 @@
 // @match    https://www.nageki-cg.net/iidx/profile*
 
 // @require  https://cdn.jsdelivr.net/npm/date-fns@3.6.0/cdn.min.js
-// @require  https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js
 // ==/UserScript==
 
 (() => {
   "use strict";
 
+  // -----------------------------------------
+  const PAGE_LIMIT = 10; // do not abuse this!
+  // -----------------------------------------
+
   const SLEEP_TIME_BETWEEN_PAGES = 250;
-  const PAGE_LIMIT = 10;
   const API_KEY = "api-key";
   const KAMAI_COLOR = "#e61c6e";
   const CLIENT_FILE_FLOW =
@@ -62,7 +64,7 @@
    */
   function log(txt) {
     const statusNode = document.getElementById("log-box");
-    const FORMAT = "hh:mm:ss.u";
+    const FORMAT = "hh:mm:ss";
     const dateText = dateFns.format(new Date(), FORMAT);
     statusNode.innerHTML += `[${dateText}] ${txt}\n`;
 
@@ -118,10 +120,23 @@
     panelFooterRow.after(importStatusRow);
   }
 
+  /**
+   * Get a value from local storage.
+   *
+   * @param {string} key
+   * @returns
+   */
   function getPreference(key) {
     return localStorage.getItem(`__ktimporter__${key}`);
   }
 
+  /**
+   * Set a key-value pair in local storage.
+   *
+   * @param {string} key
+   * @param {string} value
+   * @returns
+   */
   function setPreference(key, value) {
     return localStorage.setItem(`__ktimporter__${key}`, value.toString());
   }
@@ -467,9 +482,9 @@
   }
 
   /**
-   * Download all parsed scores to a JSON in BATCH-MANUAL format.
+   * Main function for the import button.
    */
-  async function downloadScores() {
+  async function importScores() {
     log(LOG_SEPARATOR);
 
     const scoresUngrouped = await fetchScoresForPages();
@@ -477,8 +492,9 @@
 
     const numImports = countNumImports(scoresByGameVer);
     log(
-      `Starting imports for each game version and playtype (${numImports} imports)...`
+      `Starting imports for each game version and playtype (${numImports} import(s))...`
     );
+    log(LOG_SEPARATOR);
 
     // TODO: this for-loop might be a janky way of doing it since we're
     // dealing with async/await. if we happen to see significant
@@ -718,6 +734,9 @@
     });
   }
 
+  /**
+   * Create an API key button next to the Update button.
+   */
   function createApiKeyButton() {
     const panelFooterRow = document.querySelector("form .panel tfoot tr");
     const updateButton = panelFooterRow.querySelector('input[value="Update"]');
@@ -743,7 +762,7 @@
   }
 
   /**
-   * Create an import button next to the Update button.
+   * Create an import button next to the API key button.
    */
   function createImportButton() {
     const apiKeyButton = document.getElementById("api-key-button");
@@ -767,7 +786,7 @@
     apiKeyButton.after(importButton);
 
     importButton.onclick = async () => {
-      await downloadScores();
+      await importScores();
     };
 
     // disable the button if API key is not set
