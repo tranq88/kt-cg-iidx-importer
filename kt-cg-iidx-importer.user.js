@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name     kt-cg-iidx-importer
 // @author   tranq
-// @version  1.0.0
+// @version  1.1.0
 // @grant    none
 
 // @match    https://dev.cardinal-gate.net/iidx/profile*
@@ -11,8 +11,6 @@
 // @match    https://www.ganymede-cg.net/iidx/profile*
 // @match    https://nageki-cg.net/iidx/profile*
 // @match    https://www.nageki-cg.net/iidx/profile*
-
-// @require  https://cdn.jsdelivr.net/npm/date-fns@3.6.0/cdn.min.js
 // ==/UserScript==
 
 (() => {
@@ -64,8 +62,7 @@
    */
   function log(txt) {
     const statusNode = document.getElementById("log-box");
-    const FORMAT = "hh:mm:ss";
-    const dateText = dateFns.format(new Date(), FORMAT);
+    const dateText = new Date().toTimeString().slice(0, 8);
     statusNode.innerHTML += `[${dateText}] ${txt}\n`;
 
     // autoscroll to the newest message
@@ -216,15 +213,48 @@
   /**
    * Convert a CG timestamp to unix milliseconds.
    *
+   * Expected examples:
+   *   - "1st Jan 2024, 12:34 UTC"
+   *   - "1st Jan, 12:34 UTC" (year omitted -> use current year)
    * @param {string} date
    * @returns {number}
    */
   function parseDate(date) {
-    date = date.replace("UTC", "+0000");
-    if (date.match(/\w{3} \d{4}/g)) {
-      return dateFns.parse(date, "do MMM y, H:mm xx", new Date()).getTime();
+    date = date.replace("UTC", "").trim();
+    const re =
+      /^\s*(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]{3})(?:\s+(\d{4}))?,\s*(\d{1,2}):(\d{2})\s*$/;
+    const m = date.match(re);
+
+    if (!m) {
+      const parsed = Date.parse(date);
+      return isNaN(parsed) ? -1 : parsed;
     }
-    return dateFns.parse(date, "do MMM, H:mm xx", new Date()).getTime();
+
+    const day = parseInt(m[1], 10);
+    const monthStr =
+      m[2].slice(0, 1).toUpperCase() + m[2].slice(1).toLowerCase();
+    const year = m[3] ? parseInt(m[3], 10) : new Date().getFullYear();
+    const hour = parseInt(m[4], 10);
+    const minute = parseInt(m[5], 10);
+
+    const monthMap = {
+      Jan: 0,
+      Feb: 1,
+      Mar: 2,
+      Apr: 3,
+      May: 4,
+      Jun: 5,
+      Jul: 6,
+      Aug: 7,
+      Sep: 8,
+      Oct: 9,
+      Nov: 10,
+      Dec: 11,
+    };
+    const month = monthMap[monthStr];
+    if (month === undefined) return -1;
+
+    return Date.UTC(year, month, day, hour, minute);
   }
 
   /**
@@ -394,8 +424,10 @@
 
     const body = await req.json();
 
+    const logPrefix = `[Import for IIDX ${gameVer} ${playtype}] `;
+
     if (!body.success) {
-      updateStatus("Error: " + body.description);
+      log(logPrefix + "Error: " + body.description);
       return;
     }
 
@@ -407,7 +439,7 @@
     if (body.body.importStatus === "completed") {
       console.log(body.body);
       let message =
-        `[Import for IIDX ${gameVer} ${playtype}] ` +
+        logPrefix +
         body.description +
         ` ${body.body.import.scoreIDs.length} new scores`;
 
