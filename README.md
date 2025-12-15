@@ -14,7 +14,7 @@ Heavily inspired by [Tina-otoge's CG SDVX scraper](https://gist.github.com/Tina-
 ### With a bookmarklet
 
 1. View this site from <https://tranq88.github.io/kt-cg-iidx-importer>.
-2. Bookmark this link by dragging it to the bookmarks bar: [Kamaitachi CG IIDX Importer](javascript:void(function(d){if(['/iidx/profile'].includes(d.location.host))document.body.appendChild(document.createElement('script')).src='https://tranq88.github.io/kt-cg-iidx-importer/kt-cg-iidx-importer.min.js'})(document);).
+2. Bookmark this link by dragging it to the bookmarks bar: [Kamaitachi CG IIDX Importer](javascript:void(document.body.appendChild(document.createElement("script")).src="https://tranq88.github.io/kt-cg-iidx-importer/kt-cg-iidx-importer.min.js");).
 
 ## Usage
 
