@@ -6,8 +6,15 @@ Heavily inspired by [Tina-otoge's CG SDVX scraper](https://gist.github.com/Tina-
 
 ## Installation
 
+### With a userscript manager
+
 1. Install a userscript manager (e.g. Greasemonkey or Tampermonkey).
-2. Create a new script with [kt-cg-iidx-importer.user.js](https://github.com/tranq88/kt-cg-iidx-importer/blob/main/kt-cg-iidx-importer.user.js) as its contents or just click [here](https://github.com/tranq88/kt-cg-iidx-importer/raw/refs/heads/main/kt-cg-iidx-importer.user.js).
+2. Click [here](https://github.com/tranq88/kt-cg-iidx-importer/raw/main/kt-cg-iidx-importer.user.js).
+
+### With a bookmarklet
+
+1. View this site from <https://tranq88.github.io/kt-cg-iidx-importer>.
+2. Bookmark this link by dragging it to the bookmarks bar: [Kamaitachi CG IIDX Importer](javascript:void(function(d){if(['/iidx/profile'].includes(d.location.host))document.body.appendChild(document.createElement('script')).src='https://tranq88.github.io/kt-cg-iidx-importer/kt-cg-iidx-importer.min.js'})(document);).
 
 ## Usage
 

@@ -1,0 +1,17 @@
+{
+  "name": "kt-cg-iidx-exporter",
+  "version": "1.1.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "build": "rollup -c rollup.config.js"
+  },
+  "keywords": [],
+  "author": "tranq",
+  "license": "GPL-3.0-only",
+  "dependencies": {
+    "@rollup/plugin-terser": "^0.4.4",
+    "rollup": "^4.53.3"
+  }
+}
