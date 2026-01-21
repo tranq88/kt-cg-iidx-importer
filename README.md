@@ -28,4 +28,5 @@ Heavily inspired by [Tina-otoge's CG SDVX scraper](https://gist.github.com/Tina-
   - If `PAGE_LIMIT` is set to `10`, then the script will only import your scores from pages 1 to 10.
   - To import the rest, you have to visit page 11 (https://[cg instance]/iidx/profile?page=11) and then click the button again.
   - You can increase this value for convenience but understand that the limit is there to avoid overloading the website.
+- If you have omnimix scores, it's recommended to do an import with the checkbox disabled and another import with the checkbox enabled.
 - Any scores on BEGINNER charts are ignored as Kamaitachi doesn't track them.

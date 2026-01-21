@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name     kt-cg-iidx-importer
 // @author   tranq
-// @version  1.1.0
+// @version  1.2.0
 // @grant    none
 
 // @match    https://dev.cardinal-gate.net/iidx/profile*
@@ -308,7 +308,7 @@
         .split(" ")[0]
         .replace(",", "");
       scoreObj.timeAchieved = parseDate(
-        cells[2].querySelectorAll(".cell")[1].textContent.trim()
+        cells[2].querySelectorAll(".cell")[1].textContent.trim(),
       );
       scoreObj.judgements = {
         pgreat: +cells[2]
@@ -515,8 +515,10 @@
 
   /**
    * Main function for the import button.
+   *
+   * @param {boolean} omnimixMode
    */
-  async function importScores() {
+  async function importScores(omnimixMode) {
     log(LOG_SEPARATOR);
 
     const scoresUngrouped = await fetchScoresForPages();
@@ -524,7 +526,7 @@
 
     const numImports = countNumImports(scoresByGameVer);
     log(
-      `Starting imports for each game version and playtype (${numImports} import(s))...`
+      `Starting imports for each game version and playtype (${numImports} import(s))...`,
     );
     log(LOG_SEPARATOR);
 
@@ -541,7 +543,7 @@
           game: "iidx",
           playtype: "SP",
           service: getServiceName(),
-          version: gameVer,
+          version: gameVer + `${omnimixMode ? "-omni" : ""}`,
         },
         scores: scores.SP,
       };
@@ -549,13 +551,21 @@
       // we're not gonna bother sleeping in between API calls
       // cause surely there won't be a user that has a million game versions
       if (scores.SP.length > 0) {
-        await submitScores(batchJson, gameVer, "SP");
+        await submitScores(
+          batchJson,
+          gameVer + `${omnimixMode ? " Omnimix" : ""}`,
+          "SP",
+        );
       }
       if (scores.DP.length > 0) {
         batchJson.meta.playtype = "DP";
         batchJson.scores = scores.DP;
 
-        await submitScores(batchJson, gameVer, "DP");
+        await submitScores(
+          batchJson,
+          gameVer + `${omnimixMode ? " Omnimix" : ""}`,
+          "DP",
+        );
       }
     }
   }
@@ -801,7 +811,7 @@
 
     if (!apiKeyButton) {
       console.error(
-        "Error: createImportButton() was called before the API key button was created"
+        "Error: createImportButton() was called before the API key button was created",
       );
       return;
     }
@@ -817,8 +827,34 @@
 
     apiKeyButton.after(importButton);
 
+    // create checkbox for omnimix mode
+    const checkboxLabel = document.createElement("label");
+    checkboxLabel.style.marginLeft = "0.75em";
+    checkboxLabel.style.display = "inline-flex";
+    checkboxLabel.style.alignItems = "center";
+    checkboxLabel.style.gap = "0.25em";
+    checkboxLabel.style.verticalAlign = "middle";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.id = "omnimix-checkbox";
+    checkbox.style.margin = "0";
+    checkbox.style.verticalAlign = "middle";
+
+    const labelText = document.createTextNode("Omnimix mode");
+
+    checkboxLabel.appendChild(checkbox);
+    checkboxLabel.appendChild(labelText);
+
+    importButton.after(checkboxLabel);
+
     importButton.onclick = async () => {
-      await importScores();
+      const isOmnimixMode = checkbox.checked;
+      if (isOmnimixMode) {
+        await importScores(true);
+      } else {
+        await importScores(false);
+      }
     };
 
     // disable the button if API key is not set
